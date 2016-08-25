@@ -5,7 +5,7 @@ unit V8AddIn;
 interface
 
 uses
-  Classes, SysUtils, CTypes, Variants, LCLProc;
+  Classes, SysUtils, CTypes, Variants, LCLProc, contnrs;
 
 type
 
@@ -36,7 +36,26 @@ type
   { TAddIn }
 
   TAddIn = class
-  private
+  public type
+    TGetMethod = function: Variant of object;
+    TSetMethod = procedure (AValue: Variant) of object;
+    TProcMethod = procedure (const Params: array of Variant) of object;
+    TProc0Method = procedure of object;
+    TProc1Method = procedure (P1: Variant) of object;
+    TProc2Method = procedure (P1, P2: Variant) of object;
+    TProc3Method = procedure (P1, P2, P3: Variant) of object;
+    TProc4Method = procedure (P1, P2, P3, P4: Variant) of object;
+    TProc5Method = procedure (P1, P2, P3, P4, P5: Variant) of object;
+    TFuncMethod = function (const Params: array of Variant): Variant of object;
+    TFunc0Method = function: Variant of object;
+    TFunc1Method = function (P1: Variant): Variant of object;
+    TFunc2Method = function (P1, P2: Variant): Variant of object;
+    TFunc3Method = function (P1, P2, P3: Variant): Variant of object;
+    TFunc4Method = function (P1, P2, P3, P4: Variant): Variant of object;
+    TFunc5Method = function (P1, P2, P3, P4, P5: Variant): Variant of object;
+  private class var
+    FFactory: Pointer;
+  private var
     FConnection: Pointer;
     FMemoryManager: Pointer;
   protected
@@ -60,7 +79,8 @@ type
     function UserAgentInformation: String;
     function ApplicationType: TAppType;
     { IMsgBox }
-    function Confirm(const QueryText: String; var RetValue: Variant): Boolean;
+    function Confirm(const QueryText: String; var RetValue: Variant): Boolean; overload;
+    function Confirm(const QueryText: String): Boolean; overload;
     function Alert(const Text: String): Boolean;
   public
     constructor Create; virtual;
@@ -87,13 +107,31 @@ type
     function CallAsFunc(const MethodNum: Integer; var RetValue: Variant; const Params: array of Variant): Boolean; virtual;
     { ILocaleBase }
     procedure SetLocale(const Locale: String); virtual;
+    { Easy use }
+    class procedure RegisterClass(const AddInClassName: String; const AddInClassVersion: Integer);
+    class procedure AddProp(const Name, NameAlias: String; const ReadMethod: TGetMethod = nil; const WriteMethod: TSetMethod = nil);
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProcMethod; const NParams: Integer); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc0Method); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc1Method); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc2Method); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc3Method); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc4Method); overload;
+    class procedure AddProc(const Name, NameAlias: String; const Method: TProc5Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFuncMethod; const NParams: Integer); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc0Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc1Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc2Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc3Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc4Method); overload;
+    class procedure AddFunc(const Name, NameAlias: String; const Method: TFunc5Method); overload;
   end;
 
   TAddInClass = class of TAddIn;
 
 procedure Unused(const AValue);
 
-procedure RegisterAddInClass(const AddInClassName: String; const AddInClass: TAddInClass);
+procedure RegisterAddInClass(const AddInClassName: String;
+    const AddInClass: TAddInClass; const AddInClassVersion: Integer = 0001);
 
 {****************************************************************************
                         1C binary data
@@ -144,7 +182,7 @@ var
 {$I factory.inc}
 
 procedure RegisterAddInClass(const AddInClassName: String;
-  const AddInClass: TAddInClass);
+  const AddInClass: TAddInClass; const AddInClassVersion: Integer);
 var
   Index: Integer;
   Factory: TAddInFactory;
@@ -154,6 +192,9 @@ begin
     FactoryList.Delete(Index);
   Factory := TAddInFactory.Create;
   Factory.AddInClass := AddInClass;
+  Factory.AddInClassName := AddInClassName;
+  Factory.AddInClassVersion := AddInClassVersion;
+  AddInClass.FFactory := Factory;
   FactoryList.AddObject(AddInClassName, Factory);
 end;
 
@@ -211,6 +252,11 @@ end;
 ****************************************************************************}
 
 { TAddIn }
+
+{$PUSH}
+{$MACRO ON}
+
+{$define ClassFactory := TAddInFactory(FFactory)}
 
 class function TAddIn.AppCapabilities: TAppCapabilities;
 begin
@@ -380,6 +426,27 @@ begin
   FreeMem(wsQueryText);
 end;
 
+function TAddIn.Confirm(const QueryText: String): Boolean;
+var
+  wsQueryText: PWideChar;
+  RV: T1CVariant;
+  IFace: PMsgBox;
+  RetValue: Variant;
+begin
+  RV.vt := VTYPE_EMPTY;
+  RetValue := Unassigned;
+  To1CVariant(RetValue, RV, nil);
+  wsQueryText := StringToWideChar(QueryText, nil);
+  IFace := PMsgBox(PAddInDefBaseEx(FConnection)^.__vfptr^.GetInterface(FConnection, eIMsgBox) - SizeOf(Pointer));
+  Result := IFace^.__vfptr^.Confirm(IFace, wsQueryText, @RV);
+  if Result then
+    begin
+      From1CVariant(RV, RetValue);
+      Result := RetValue;
+    end;
+  FreeMem(wsQueryText);
+end;
+
 function TAddIn.Alert(const Text: String): Boolean;
 var
   wsText: PWideChar;
@@ -403,7 +470,7 @@ end;
 
 function TAddIn.GetInfo: Integer;
 begin
-  Result := 0001;
+  Result := ClassFactory.AddInClassVersion;
 end;
 
 procedure TAddIn.Done;
@@ -413,77 +480,81 @@ end;
 
 function TAddIn.RegisterExtensionAs(var ExtensionName: String): Boolean;
 begin
-  Unused(ExtensionName);
-  Result := False;
+  Result := ClassFactory.RegisterExtensionAs(ExtensionName);
 end;
 
 function TAddIn.GetNProps: Integer;
 begin
-  Result := 0;
+  Result := ClassFactory.GetNProps();
 end;
 
 function TAddIn.FindProp(const PropName: String): Integer;
 begin
-  Unused(PropName);
-  Result := -1;
+  Result := ClassFactory.FindProp(PropName);
 end;
 
 function TAddIn.GetPropName(const PropNum, PropAlias: Integer): String;
 begin
-  Unused(PropNum);
-  Unused(PropAlias);
-  Result := '';
+  Result := ClassFactory.GetPropName(PropNum, PropAlias);
 end;
 
 function TAddIn.GetPropVal(const PropNum: Integer; var Value: Variant): Boolean;
 begin
-  Unused(PropNum);
-  Unused(Value);
   Result := False;
+  try
+    Result := ClassFactory.GetPropVal(Self, PropNum, Value);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 function TAddIn.SetPropVal(const PropNum: Integer; const Value: Variant
   ): Boolean;
 begin
-  Unused(PropNum);
-  Unused(Value);
   Result := False;
+  try
+    Result := ClassFactory.SetPropVal(Self, PropNum, Value);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 function TAddIn.IsPropReadable(const PropNum: Integer): Boolean;
 begin
-  Unused(PropNum);
-  Result := False;
+  Result := ClassFactory.IsPropReadable(PropNum);
 end;
 
 function TAddIn.IsPropWritable(const PropNum: Integer): Boolean;
 begin
-  Unused(PropNum);
-  Result := False;
+  Result := ClassFactory.IsPropWritable(PropNum);
 end;
 
 function TAddIn.GetNMethods: Integer;
 begin
-  Result := 0;
+  Result := ClassFactory.GetNMethods;
 end;
 
 function TAddIn.FindMethod(const AMethodName: String): Integer;
 begin
-  Unused(AMethodName);
-  Result := -1;
+  Result := ClassFactory.FindMethod(AMethodName);
 end;
 
 function TAddIn.GetMethodName(const MethodNum, MethodAlias: Integer): String;
 begin
-  Unused(MethodNum);
-  Unused(MethodAlias);
-  Result := '';
+  Result := ClassFactory.GetMethodName(MethodNum, MethodAlias);
 end;
 
 function TAddIn.GetNParams(const MethodNum: Integer): Integer;
 begin
-  Unused(MethodNum);
   Result := 0;
+  try
+    Result := ClassFactory.GetNParams(MethodNum);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 function TAddIn.GetParamDefValue(const MethodNum, ParamNum: Integer;
@@ -497,25 +568,37 @@ end;
 
 function TAddIn.HasRetVal(const MethodNum: Integer): Boolean;
 begin
-  Unused(MethodNum);
   Result := False;
+  try
+    Result := ClassFactory.HasRetVal(MethodNum);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 function TAddIn.CallAsProc(const MethodNum: Integer;
   const Params: array of Variant): Boolean;
 begin
-  Unused(MethodNum);
-  Unused(Params);
   Result := False;
+  try
+    Result := ClassFactory.CallAsProc(Self, MethodNum, Params);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 function TAddIn.CallAsFunc(const MethodNum: Integer; var RetValue: Variant;
   const Params: array of Variant): Boolean;
 begin
-  Unused(MethodNum);
-  Unused(RetValue);
-  Unused(Params);
   Result := False;
+  try
+    Result := ClassFactory.CallAsFunc(Self, MethodNum, RetValue, Params);
+  except
+    on E: Exception do
+      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+  end;
 end;
 
 procedure TAddIn.SetLocale(const Locale: String);
@@ -523,6 +606,106 @@ begin
   Unused(Locale);
   // Do noting by default
 end;
+
+class procedure TAddIn.RegisterClass(const AddInClassName: String;
+  const AddInClassVersion: Integer);
+begin
+  RegisterAddInClass(AddInClassName, Self, AddInClassVersion);
+end;
+
+class procedure TAddIn.AddProp(const Name, NameAlias: String;
+  const ReadMethod: TGetMethod; const WriteMethod: TSetMethod);
+begin
+  ClassFactory.AddProp(Name, NameAlias, ReadMethod, WriteMethod);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProcMethod; const NParams: Integer);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method, NParams);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc0Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc1Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc2Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc3Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc4Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddProc(const Name, NameAlias: String;
+  const Method: TProc5Method);
+begin
+  ClassFactory.AddProc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFuncMethod; const NParams: Integer);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method, NParams);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc0Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc1Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc2Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc3Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc4Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+class procedure TAddIn.AddFunc(const Name, NameAlias: String;
+  const Method: TFunc5Method);
+begin
+  ClassFactory.AddFunc(Name, NameAlias, Method);
+end;
+
+{$undef ClassFactory}
+
+{$POP}
 
 {$I init.inc}
 

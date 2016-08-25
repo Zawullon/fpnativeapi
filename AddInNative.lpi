@@ -76,7 +76,7 @@
         <PackageName Value="LCLBase"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="13">
+    <Units Count="14">
       <Unit0>
         <Filename Value="AddInNative.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -131,6 +131,11 @@
         <Filename Value="init.inc"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
+      <Unit13>
+        <Filename Value="easyexample.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="EasyExample"/>
+      </Unit13>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

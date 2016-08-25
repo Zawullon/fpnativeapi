@@ -4,7 +4,7 @@ library AddInNative;
 
 uses
   {$IFDEF UNIX} {$IFDEF UseCThreads} cthreads, cmem, {$ENDIF} {$ENDIF}
-  V8AddIn, Example;
+  V8AddIn, Example, EasyExample;
 
 exports
 
