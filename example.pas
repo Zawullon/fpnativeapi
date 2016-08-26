@@ -329,9 +329,5 @@ begin
   end;
 end;
 
-initialization
-
-  RegisterAddInClass('TAddInExample', TAddInExample);
-
 end.
 

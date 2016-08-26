@@ -24,13 +24,11 @@ type
   private
     FIsEnabled: Boolean;
     FTimer: TTimerThread;
-    function GetIsEnabled: Variant;
-    function GetIsTimerPresent: Variant;
     procedure MyTimerProc(Sender: TObject);
-    procedure SetIsEnabled(AValue: Variant);
   public
-    property IsEnabled: Variant read GetIsEnabled write SetIsEnabled;
-    property IsTimerPresent: Variant read GetIsTimerPresent;
+    function GetIsEnabled: Variant;
+    procedure SetIsEnabled(AValue: Variant);
+    function GetIsTimerPresent: Variant;
     procedure Enable;
     procedure Disable;
     procedure ShowInStatusLine(Text: Variant);
@@ -58,24 +56,24 @@ end;
 
 { TAddInEasyExample }
 
-function TAddInEasyExample.GetIsEnabled: Variant;
-begin
-  Result := FIsEnabled;
-end;
-
-function TAddInEasyExample.GetIsTimerPresent: Variant;
-begin
-  Result := True;
-end;
-
 procedure TAddInEasyExample.MyTimerProc(Sender: TObject);
 begin
   ExternalEvent('EasyComponentNative', 'Timer', DateTimeToStr(Now));
 end;
 
+function TAddInEasyExample.GetIsEnabled: Variant;
+begin
+  Result := FIsEnabled;
+end;
+
 procedure TAddInEasyExample.SetIsEnabled(AValue: Variant);
 begin
   FIsEnabled := AValue;
+end;
+
+function TAddInEasyExample.GetIsTimerPresent: Variant;
+begin
+  Result := True;
 end;
 
 procedure TAddInEasyExample.Enable;
@@ -138,22 +136,6 @@ begin
   else
     Alert('Cancel');
 end;
-
-initialization
-
-  with TAddInEasyExample do
-    begin
-      RegisterClass('AddInNativeEasyExtension', 2000);
-      AddProp('IsEnabled', 'Включен', @GetIsEnabled, @SetIsEnabled);
-      AddProp('IsTimerPresent', 'ЕстьТаймер', @GetIsTimerPresent);
-      AddProc('Enable', 'Включить', @Enable);
-      AddProc('Disable', 'Выключить', @Disable);
-      AddProc('ShowInStatusLine', 'ПоказатьВСтрокеСтатуса', @ShowInStatusLine);
-      AddProc('StartTimer', 'СтартТаймер', @StartTimer);
-      AddProc('StopTimer', 'СтопТаймер', @StopTimer);
-      AddFunc('LoadPicture', 'ЗагрузитьКартинку', @LoadPicture);
-      AddProc('ShowMessageBox', 'ПоказатьСообщение', @ShowMessageBox);
-    end;
 
 end.
 

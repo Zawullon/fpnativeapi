@@ -141,8 +141,7 @@ type
 
   TAddInFactory = class
     AddInClass: TAddInClass;
-    AddInClassName: String;
-    AddInClassVersion: Integer;
+    AddInExtensionName: String;
     PropList: TFPObjectList;
     MethodList: TFPObjectList;
     destructor Destroy; override;
@@ -182,6 +181,32 @@ type
     procedure AddFunc(const Name, NameAlias: String; const Method: TAddIn.TFunc4Method); overload;
     procedure AddFunc(const Name, NameAlias: String; const Method: TAddIn.TFunc5Method); overload;
   end;
+
+var
+  LastClass: TAddInClass;
+  LastFactory: TAddInFactory;
+
+function GetClassFactory(AddInClass: TAddInClass): TAddInFactory;
+var
+  I: Integer;
+begin
+  if LastClass = AddInClass then
+    Result := LastFactory
+  else
+    begin
+      for I := 0 to FactoryList.Count - 1 do
+        begin
+          Result := TAddInFactory(FactoryList.Objects[I]);
+          if Result.AddInClass = AddInClass then
+            begin
+              LastClass := AddInClass;
+              LastFactory := Result;
+              Exit;
+            end;
+        end;
+      Result := nil;
+    end;
+end;
 
 { TPropData }
 
@@ -558,8 +583,6 @@ end;
 
 destructor TAddInFactory.Destroy;
 begin
-  if Assigned(AddInClass) then
-    AddInClass.FFactory := nil;
   if PropList <> nil then
     FreeAndNil(PropList);
   if MethodList <> nil then
@@ -573,6 +596,7 @@ begin
   Result^ := ComponentBase;
   Result^.Factory := Self;
   Result^.Data := AddInClass.Create;
+  Result^.Data.FFactory := Self;
 end;
 
 procedure TAddInFactory.Delete(var AddInData: PComponentBase);
@@ -584,8 +608,8 @@ end;
 
 function TAddInFactory.RegisterExtensionAs(var ExtensionName: String): Boolean;
 begin
-  ExtensionName := AddInClassName;
-  Result := True;
+  ExtensionName := AddInExtensionName;
+  Result := ExtensionName <> '';
 end;
 
 function TAddInFactory.GetNProps: Integer;

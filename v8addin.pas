@@ -35,7 +35,7 @@ type
 
   { TAddIn }
 
-  TAddIn = class
+  TAddIn = class (Tobject)
   public type
     TGetMethod = function: Variant of object;
     TSetMethod = procedure (AValue: Variant) of object;
@@ -53,11 +53,10 @@ type
     TFunc3Method = function (P1, P2, P3: Variant): Variant of object;
     TFunc4Method = function (P1, P2, P3, P4: Variant): Variant of object;
     TFunc5Method = function (P1, P2, P3, P4, P5: Variant): Variant of object;
-  private class var
-    FFactory: Pointer;
-  private var
+  private
     FConnection: Pointer;
     FMemoryManager: Pointer;
+    FFactory: Pointer;
   protected
     class function AppCapabilities: TAppCapabilities; static;
     { IMemoryManager }
@@ -108,7 +107,7 @@ type
     { ILocaleBase }
     procedure SetLocale(const Locale: String); virtual;
     { Easy use }
-    class procedure RegisterClass(const AddInClassName: String; const AddInClassVersion: Integer);
+    class procedure RegisterAddInClass(const AddInExtensionName: String);
     class procedure AddProp(const Name, NameAlias: String; const ReadMethod: TGetMethod = nil; const WriteMethod: TSetMethod = nil);
     class procedure AddProc(const Name, NameAlias: String; const Method: TProcMethod; const NParams: Integer); overload;
     class procedure AddProc(const Name, NameAlias: String; const Method: TProc0Method); overload;
@@ -130,8 +129,7 @@ type
 
 procedure Unused(const AValue);
 
-procedure RegisterAddInClass(const AddInClassName: String;
-    const AddInClass: TAddInClass; const AddInClassVersion: Integer = 0001);
+procedure RegisterAddInClass(const AddInClass: TAddInClass);
 
 {****************************************************************************
                         1C binary data
@@ -181,21 +179,17 @@ var
 
 {$I factory.inc}
 
-procedure RegisterAddInClass(const AddInClassName: String;
-  const AddInClass: TAddInClass; const AddInClassVersion: Integer);
+procedure RegisterAddInClass(const AddInClass: TAddInClass);
 var
   Index: Integer;
   Factory: TAddInFactory;
 begin
-  Index := FactoryList.IndexOf(AddInClassName);
+  Index := FactoryList.IndexOf(AddInClass.ClassName);
   if Index >= 0 then
     FactoryList.Delete(Index);
   Factory := TAddInFactory.Create;
   Factory.AddInClass := AddInClass;
-  Factory.AddInClassName := AddInClassName;
-  Factory.AddInClassVersion := AddInClassVersion;
-  AddInClass.FFactory := Factory;
-  FactoryList.AddObject(AddInClassName, Factory);
+  FactoryList.AddObject(AddInClass.ClassName, Factory);
 end;
 
 {****************************************************************************
@@ -207,6 +201,11 @@ begin
   if ClassNames = nil then
     ClassNames := StringToWideChar(FactoryList.DelimitedText, nil);
   Result := ClassNames;
+end;
+
+function GetClassNamesS: String;
+begin
+  Result := FactoryList.DelimitedText;
 end;
 
 function GetClassObject(const wsName: PWideChar; var pIntf: Pointer): clong;
@@ -470,7 +469,7 @@ end;
 
 function TAddIn.GetInfo: Integer;
 begin
-  Result := ClassFactory.AddInClassVersion;
+  Result := 2000;
 end;
 
 procedure TAddIn.Done;
@@ -505,7 +504,7 @@ begin
     Result := ClassFactory.GetPropVal(Self, PropNum, Value);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -517,7 +516,7 @@ begin
     Result := ClassFactory.SetPropVal(Self, PropNum, Value);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -553,7 +552,7 @@ begin
     Result := ClassFactory.GetNParams(MethodNum);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -573,7 +572,7 @@ begin
     Result := ClassFactory.HasRetVal(MethodNum);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -585,7 +584,7 @@ begin
     Result := ClassFactory.CallAsProc(Self, MethodNum, Params);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -597,7 +596,7 @@ begin
     Result := ClassFactory.CallAsFunc(Self, MethodNum, RetValue, Params);
   except
     on E: Exception do
-      AddError(ADDIN_E_FAIL, ClassFactory.AddInClassName, E.Message, 0);
+      AddError(ADDIN_E_FAIL, ClassName, E.Message, 0);
   end;
 end;
 
@@ -607,10 +606,12 @@ begin
   // Do noting by default
 end;
 
-class procedure TAddIn.RegisterClass(const AddInClassName: String;
-  const AddInClassVersion: Integer);
+{$define ClassFactory := GetClassFactory(Self)}
+
+class procedure TAddIn.RegisterAddInClass(const AddInExtensionName: String);
 begin
-  RegisterAddInClass(AddInClassName, Self, AddInClassVersion);
+  V8AddIn.RegisterAddInClass(Self);
+  ClassFactory.AddInExtensionName := AddInExtensionName;
 end;
 
 class procedure TAddIn.AddProp(const Name, NameAlias: String;

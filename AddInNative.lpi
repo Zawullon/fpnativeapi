@@ -19,6 +19,9 @@
       <EnableI18N LFM="False"/>
     </i18n>
     <VersionInfo>
+      <UseVersionInfo Value="True"/>
+      <AutoIncrementBuild Value="True"/>
+      <MinorVersionNr Value="1"/>
       <StringTable ProductVersion=""/>
     </VersionInfo>
     <BuildModes Count="2">
@@ -49,14 +52,6 @@
               <StackChecks Value="True"/>
             </Checks>
           </CodeGeneration>
-          <Linking>
-            <Debugging>
-              <UseExternalDbgSyms Value="True"/>
-            </Debugging>
-            <Options>
-              <ExecutableType Value="Library"/>
-            </Options>
-          </Linking>
         </CompilerOptions>
       </Item2>
     </BuildModes>
@@ -76,7 +71,7 @@
         <PackageName Value="LCLBase"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="14">
+    <Units Count="17">
       <Unit0>
         <Filename Value="AddInNative.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -136,6 +131,24 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="EasyExample"/>
       </Unit13>
+      <Unit14>
+        <Filename Value="exampleform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormExample"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="ExampleForm"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="guiexample.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="GUIExample"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="v8addingui.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="V8AddInGUI"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
