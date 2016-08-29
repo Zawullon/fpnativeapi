@@ -37,7 +37,6 @@ type
     VTYPE_RESERVED      = $8000,
     VTYPE_ILLEGAL       = $ffff);
 
-type
   P1CVariant = ^T1CVariant;
 
   TTM = record
