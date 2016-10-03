@@ -44,6 +44,7 @@ begin
     begin
       EnterCriticalsection(GUICriticalSection);
       try
+        Application.Initialize;
         if FGUIThread = nil then
           FGUIThread := TGUIThread.Create(False);
       finally
@@ -81,12 +82,15 @@ end;
 
 procedure TGUIThread.Execute;
 begin
-  MainThreadID := GetCurrentThreadId;
-  Application.Initialize;
   Application.ShowMainForm := False;
   Application.CreateForm(TForm, FakeMainForm);
   repeat
-    Application.ProcessMessages;
+    WidgetSet.AppProcessMessages;
+    if not Terminated then
+      begin
+        Application.Idle(False);
+        Sleep(100);
+      end;
   until Terminated;
   FakeMainForm.Free;
 end;
@@ -103,9 +107,8 @@ initialization
 
 finalization
 
-  MainThreadID := GetCurrentThreadId;
   if FGUIThread <> nil then
-    FGUIThread.Terminate;
+    FGUIThread.Free;
   DoneCriticalSection(GUICriticalSection);
 
 end.
