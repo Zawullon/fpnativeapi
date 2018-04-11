@@ -40,3 +40,4 @@ types.inc | Реализация types.h
 v8addin.pas | Базовый класс для реализации расширения (TAddIn)
 v8addingui.pas | Реализация отдельного потока для работы с GUI
 variants.inc | Преобразование типов 1С в тип Variant FreePascal
+NativeAPI.epf | Пример внешней обработки для использования компоненты

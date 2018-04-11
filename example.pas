@@ -5,7 +5,7 @@ unit Example;
 interface
 
 uses
-  Classes, SysUtils, V8AddIn, fpTimer, FileUtil;
+  Classes, SysUtils, V8AddIn, fpTimer, FileUtil, LazUTF8;
 
 type
 
