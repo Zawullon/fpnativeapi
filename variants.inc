@@ -140,6 +140,7 @@ end;
 function To1CVariant(const Value: Variant; var PropVal: T1CVariant; const MemoryManager: P1CMemoryManager): Boolean;
 var
   VarData: TVarData absolute Value;
+  Str: WideString;
 begin
   case VarData.vtype of
     varempty:
@@ -254,8 +255,9 @@ begin
     //varrecord:
     varstring:
       begin
+        Str := UTF8Decode(String(Value));
         PropVal.vt := VTYPE_PWSTR;
-        PropVal.Value.wstrLen := Length(String(VarData.vstring));
+        PropVal.Value.wstrLen := Length(Str);
         Result := MemoryManager^.__vfptr^.AllocMemory(MemoryManager, PropVal.Value.pwstrVal, (PropVal.Value.wstrLen + 1) * SizeOf(WideChar));
         if not Result then
           begin
@@ -265,7 +267,7 @@ begin
         if PropVal.Value.wstrLen = 0 then
           Move(EmptyWideChar, PropVal.Value.pwstrVal^, (PropVal.Value.wstrLen + 1) * SizeOf(WideChar))
         else
-          Move(UTF8Decode(String(VarData.vstring))[1], PropVal.Value.pwstrVal^, (PropVal.Value.wstrLen + 1) * SizeOf(WideChar));
+          Move(Str[1], PropVal.Value.pwstrVal^, (PropVal.Value.wstrLen + 1) * SizeOf(WideChar));
         Result := True;
       end;
     //varustring:
